@@ -1,0 +1,190 @@
+name: Tag compile
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+concurrency:
+  group: tag-compile-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+env:
+  CI: "true"
+  HUSKY: "0"
+  NODE_OPTIONS: "--max-old-space-size=8192"
+  CSC_IDENTITY_AUTO_DISCOVERY: "false"
+  ZCODE_ENABLE_MAC_SIGN: "0"
+
+jobs:
+  resolve:
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve and check version
+        id: version
+        run: |
+          set -eu
+          ref_name="${GITHUB_REF_NAME}"
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            version="${ref_name#v}"
+          else
+            version="$(node -p "require('./package.json').version")"
+          fi
+          pkg_version="$(node -p "require('./package.json').version")"
+          if [ "${GITHUB_REF_TYPE}" = "tag" ] && [ "${version}" != "${pkg_version}" ]; then
+            echo "Tag version ${version} does not match package.json version ${pkg_version}" >&2
+            exit 1
+          fi
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+          echo "Resolved version ${version}"
+
+  desktop:
+    needs: resolve
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-14
+            target_os: mac
+            target_arch: arm64
+          - runner: macos-14
+            target_os: mac
+            target_arch: x64
+          - runner: windows-latest
+            target_os: win
+            target_arch: x64
+          - runner: windows-latest
+            target_os: win
+            target_arch: arm64
+          - runner: ubuntu-24.04
+            target_os: linux
+            target_arch: x64
+          - runner: ubuntu-24.04-arm
+            target_os: linux
+            target_arch: arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 180
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Linux packaging tools
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            python3 \
+            rpm \
+            fakeroot \
+            dpkg \
+            libarchive-tools
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.14.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Bundle desktop
+        run: pnpm bundle:desktop -- --os "${{ matrix.target_os }}" --arch "${{ matrix.target_arch }}"
+
+      - name: Upload desktop artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.target_os }}-${{ matrix.target_arch }}
+          path: |
+            packages/desktop/dist/*.dmg
+            packages/desktop/dist/*.zip
+            packages/desktop/dist/*.exe
+            packages/desktop/dist/*.AppImage
+            packages/desktop/dist/*.deb
+            packages/desktop/dist/*.rpm
+            packages/desktop/dist/*.pkg.tar.zst
+          if-no-files-found: error
+
+  cli:
+    needs: resolve
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.14.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build CLI distribution
+        run: >
+          pnpm build:zcode
+          --version "${{ needs.resolve.outputs.version }}"
+          --base-url "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/"
+
+      - name: Upload CLI artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: zcode-cli
+          path: |
+            dist/zcode/releases/${{ needs.resolve.outputs.version }}/zcode-${{ needs.resolve.outputs.version }}.tar.gz
+            dist/zcode/releases/${{ needs.resolve.outputs.version }}/sha256.txt
+            dist/zcode/latest.json
+            dist/zcode/install.sh
+          if-no-files-found: error
+
+  release:
+    needs: [resolve, desktop, cli]
+    if: ${{ success() && startsWith(github.ref, 'refs/tags/') }}
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -eu
+          mapfile -t files < <(find release-assets -type f)
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "No release assets found" >&2
+            exit 1
+          fi
+          if gh release view "${TAG}" >/dev/null 2>&1; then
+            gh release upload "${TAG}" "${files[@]}" --clobber
+          else
+            gh release create "${TAG}" "${files[@]}" \
+              --title "${TAG}" \
+              --generate-notes \
+              --verify-tag
+          fi
