@@ -147,7 +147,7 @@ pnpm bundle:desktop -- --help
 
 The default target is macOS arm64, and the default output directory is `packages/desktop/dist/`. `--os` accepts `mac`, `win`, or `linux`; `--arch` accepts `x64` or `arm64`. Packaging and signing require the tools and configuration for the target platform.
 
-Pushing a `v*` tag whose version matches the root `package.json` runs [`.github/workflows/tag-compile.yml`](.github/workflows/tag-compile.yml). It builds desktop installers for macOS, Windows, and Linux on both x64 and arm64, assembles the CLI distribution, and attaches the artifacts to that tag's GitHub Release when every job succeeds. CI builds are unsigned. See [`.github/spec/tag-compile.md`](.github/spec/tag-compile.md).
+Pushing a `v*` tag whose version matches the root `package.json`, or running [`.github/workflows/tag-compile.yml`](.github/workflows/tag-compile.yml) manually, builds desktop installers for macOS, Windows, and Linux on both x64 and arm64 plus the CLI distribution. When every job succeeds it publishes a GitHub Release titled `ZCode-<version>` whose assets all start with `ZCode-`. CI builds are unsigned. See [`.github/spec/tag-compile.md`](.github/spec/tag-compile.md).
 
 ### ZCode CLI distribution
 
