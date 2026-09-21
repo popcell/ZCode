@@ -1860,14 +1860,14 @@ const enUS: Record<string, string> = {
   "settings.memory.viewer.fileChanged":
     "This memory file was updated while being read. Reopen it or refresh the file list.",
   "settings.memory.viewer.noSelection": "Select a memory file to preview it.",
-  "settings.httpProxy": "HTTP Proxy",
+  "settings.httpProxy": "Network proxy",
   "settings.httpProxyDescription":
-    "Route model, MCP, command-tool, and app renderer egress traffic through this proxy; system environment variables are not read. Leave blank and that traffic connects directly, while the embedded browser follows your system proxy settings. Restart the app to take effect.",
+    "Route model, MCP, command-tool, and app renderer egress traffic through this proxy; system environment variables are not read. HTTP and SOCKS5 are supported. Leave blank and that traffic connects directly, while the embedded browser follows your system proxy settings. Restart the app to take effect.",
   "settings.httpProxyPlaceholder":
-    "Blank means the embedded browser follows the system proxy, e.g. http://127.0.0.1:7890",
+    "Blank means the embedded browser follows the system proxy, e.g. http://127.0.0.1:7890 or socks5://127.0.0.1:1080",
   "settings.httpProxyNoProxy": "No proxy",
   "settings.httpProxyNoProxyDescription":
-    "Requests matching these hosts connect directly instead of using the HTTP proxy. Separate rules with commas. Restart the app to take effect.",
+    "Requests matching these hosts connect directly instead of using the proxy. Separate rules with commas. Restart the app to take effect.",
   "settings.httpProxyNoProxyPlaceholder": "e.g. localhost,127.0.0.1,::1,.example.com,*.corp.com",
   "settings.httpProxyCaCertPath": "Custom certificate",
   "settings.httpProxyCaCertPathDescription":

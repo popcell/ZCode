@@ -75,6 +75,21 @@ export {
 export * from "./errors.js";
 export type { SessionCreateSource } from "./sessionCreateSource.js";
 export { resolveSafeEndpointHostname } from "./endpointHostname.js";
+export {
+  HTTP_PROXY_PROTOCOLS,
+  SOCKS_PROXY_PROTOCOLS,
+  SUPPORTED_PROXY_PROTOCOLS,
+  defaultProxyPort,
+  isSocksProxyProtocol,
+  isSupportedProxyProtocol,
+  parseProxyUrl,
+  resolveProxyProbePort,
+  toElectronProxyRules,
+  type HttpProxyProtocol,
+  type NormalizedProxyUrl,
+  type SocksProxyProtocol,
+  type SupportedProxyProtocol,
+} from "./httpProxyUrl.js";
 export * from "./rendererActionTrace.js";
 export * from "./validation.js";
 export * from "./api.js";

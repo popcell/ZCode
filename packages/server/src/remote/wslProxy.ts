@@ -1,4 +1,5 @@
 import { isIP } from "node:net";
+import { resolveProxyProbePort } from "@zcode/shared";
 import { quotePosixShellArg } from "@zcode/server/remote/posixShell.js";
 
 const LOOPBACK_IPV4_PREFIX = "127.";
@@ -44,7 +45,7 @@ export function buildWslProxyPortProbeCommand(proxyUrl: string): string | null {
   } catch {
     return null;
   }
-  const port = url.port || (url.protocol === "https:" ? "443" : "80");
+  const port = resolveProxyProbePort(url.protocol, url.port);
   if (!/^\d+$/u.test(port)) {
     return null;
   }

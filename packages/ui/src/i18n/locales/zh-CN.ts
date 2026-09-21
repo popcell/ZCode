@@ -1753,15 +1753,16 @@ const zhCN: Record<string, string> = {
   "settings.memory.viewer.fileTooLarge": "该记忆文件超过 5 MiB 预览上限。",
   "settings.memory.viewer.fileChanged": "该记忆文件在读取期间已更新，请重新打开或刷新文件列表。",
   "settings.memory.viewer.noSelection": "选择一个记忆文件以查看内容。",
-  "settings.httpProxy": "HTTP 代理",
+  "settings.httpProxy": "网络代理",
   "settings.httpProxyDescription":
-    "模型、MCP、命令工具与应用渲染层的出口流量将经此代理，不读取系统环境变量。留空时这些流量直连，内置浏览器则跟随系统代理设置。修改后需重启应用生效。",
-  "settings.httpProxyPlaceholder": "留空则内置浏览器跟随系统代理，例如 http://127.0.0.1:7890",
+    "模型、MCP、命令工具与应用渲染层的出口流量将经此代理，不读取系统环境变量。支持 HTTP 与 SOCKS5。留空时这些流量直连，内置浏览器则跟随系统代理设置。修改后需重启应用生效。",
+  "settings.httpProxyPlaceholder":
+    "留空则内置浏览器跟随系统代理，例如 http://127.0.0.1:7890 或 socks5://127.0.0.1:1080",
   // 中文词条曾在批量文案调整中被误改为英文，导致中文设置页混入未翻译标签。
   // 文案原因：「代理例外」含义模糊，沿用 Windows 系统代理的标准表述「不使用代理的地址」。
   "settings.httpProxyNoProxy": "不使用代理的地址",
   "settings.httpProxyNoProxyDescription":
-    "匹配这些主机的请求将直连，不经过 HTTP 代理。多个规则用英文逗号分隔。修改后需重启应用生效。",
+    "匹配这些主机的请求将直连，不经过代理。多个规则用英文逗号分隔。修改后需重启应用生效。",
   "settings.httpProxyNoProxyPlaceholder": "例如 localhost,127.0.0.1,::1,.example.com,*.corp.com",
   "settings.httpProxyCaCertPath": "自定义证书",
   "settings.httpProxyCaCertPathDescription":

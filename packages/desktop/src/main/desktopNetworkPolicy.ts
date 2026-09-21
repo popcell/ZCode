@@ -1,6 +1,7 @@
 import { X509Certificate } from "node:crypto";
 import { readFileSync } from "node:fs";
 import type { ProxyConfig, Session } from "electron";
+import { toElectronProxyRules } from "@zcode/shared";
 import { EMBEDDED_BROWSER_PARTITION } from "./browserDataManager.js";
 
 interface DesktopNetworkPolicySettings {
@@ -234,19 +235,7 @@ function certificateChainMatchesCustomCa(
 }
 
 function normalizeProxyRules(value: string | undefined): string | undefined {
-  const trimmed = value?.trim();
-  if (!trimmed) {
-    return undefined;
-  }
-
-  const candidate = /^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed) ? trimmed : `http://${trimmed}`;
-  try {
-    const url = new URL(candidate);
-    const auth = url.username ? `${url.username}${url.password ? `:${url.password}` : ""}@` : "";
-    return `${url.protocol}//${auth}${url.host}`;
-  } catch {
-    return undefined;
-  }
+  return toElectronProxyRules(value);
 }
 
 function normalizeProxyBypassRules(value: string | undefined): string | undefined {

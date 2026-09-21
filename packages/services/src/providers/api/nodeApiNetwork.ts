@@ -1,6 +1,8 @@
 import { readFile } from "node:fs/promises";
 import { rootCertificates } from "node:tls";
+import { parseProxyUrl } from "@zcode/shared";
 import { Agent, ProxyAgent, fetch as undiciFetch, type Dispatcher } from "undici";
+import { createHostSocksConnector, requireParsedProxyUrl } from "./hostSocksConnect.js";
 
 export interface HostApiNetworkOptions {
   httpProxy?: string;
@@ -14,10 +16,12 @@ export interface HostApiNetworkTransport {
   disposeAndWait(): Promise<void>;
 }
 
-type HostProxyRoute =
+export type HostProxyRoute =
   | { kind: "direct"; noProxyMatched?: boolean }
   | { kind: "proxy"; proxyUrl: string }
   | { kind: "invalid"; reason: string };
+
+export type HostProxyDispatcherKind = "direct" | "http-proxy" | "socks-proxy";
 
 function mergeHostApiCaCertificates(
   customCa: string,
@@ -29,16 +33,7 @@ function mergeHostApiCaCertificates(
 }
 
 function normalizeProxyUrl(value: string): string | undefined {
-  const candidate = /^\w[\w+.-]*:\/\//.test(value) ? value : `http://${value}`;
-  try {
-    const url = new URL(candidate);
-    if (!url.hostname || !["http:", "https:"].includes(url.protocol)) {
-      return undefined;
-    }
-    return url.href;
-  } catch {
-    return undefined;
-  }
+  return parseProxyUrl(value)?.href;
 }
 
 function matchesNoProxy(url: URL, value: string | undefined): boolean {
@@ -82,6 +77,16 @@ export function resolveHostProxyForUrl(
   return proxyUrl
     ? { kind: "proxy", proxyUrl }
     : { kind: "invalid", reason: "Configured Host proxy URL is invalid" };
+}
+
+export function resolveHostProxyDispatcherKind(
+  route: Exclude<HostProxyRoute, { kind: "invalid" }>,
+): HostProxyDispatcherKind {
+  if (route.kind === "direct") {
+    return "direct";
+  }
+  const parsed = requireParsedProxyUrl(route.proxyUrl);
+  return parsed.protocol === "http:" || parsed.protocol === "https:" ? "http-proxy" : "socks-proxy";
 }
 
 interface HostApiNetworkTransportDependencies {
@@ -241,12 +246,20 @@ async function createDispatcher(
 ): Promise<Dispatcher> {
   const customCa = caCertPath ? await readFile(caCertPath, "utf8") : undefined;
   const ca = customCa ? mergeHostApiCaCertificates(customCa) : undefined;
-  if (route.kind === "proxy") {
+  if (route.kind !== "proxy") {
+    return new Agent({ connect: ca ? { ca } : undefined });
+  }
+
+  const parsed = requireParsedProxyUrl(route.proxyUrl);
+  if (parsed.protocol === "http:" || parsed.protocol === "https:") {
     return new ProxyAgent({
-      uri: route.proxyUrl,
+      uri: parsed.href,
       proxyTls: ca ? { ca } : undefined,
       requestTls: ca ? { ca } : undefined,
     });
   }
-  return new Agent({ connect: ca ? { ca } : undefined });
+
+  return new Agent({
+    connect: createHostSocksConnector(parsed, ca),
+  });
 }
