@@ -38,6 +38,7 @@
 - dispatcher 由 Host transport 单飞缓存，窗口/Host 重建时必须 close/destroy，不能留下 keep-alive
 - `noProxy` 命中后直连，忽略已配置代理
 - WSL 远端把 loopback 代理主机改写成 Windows host gateway 时保留 scheme；无端口的 SOCKS 探测默认 1080，HTTP 默认 80，HTTPS 默认 443
+- `socks` 是 CommonJS 依赖且在 `hostSocksConnect` 中静态导入；内联它的 Node ESM bundle 必须按 `packages/desktop/spec/esm-bundle-cjs-require.md` 提供 `require`，否则消费方在模块求值阶段崩溃
 
 ## 验收场景
 

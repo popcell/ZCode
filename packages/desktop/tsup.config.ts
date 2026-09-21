@@ -5,6 +5,7 @@ import { pathToFileURL } from "node:url";
 import { defineConfig } from "tsup";
 import { getBuildMetadata } from "./scripts/build-metadata.mjs";
 import { resolveDesktopProductFlavor } from "./scripts/desktop-product-identity.mjs";
+import { ESM_NODE_REQUIRE_BANNER } from "../../scripts/esm-node-require-banner.mjs";
 // tsup 会先打包配置文件；动态加载构建工具，避免其 import.meta.dirname 被重定位到 desktop。
 const { loadBuiltinProviderConfig } = await import(
   pathToFileURL(resolve(import.meta.dirname, "../../scripts/builtin-provider-config.mjs")).href
@@ -126,6 +127,13 @@ const desktopNodeRuntimeExternals = [
   "yauzl",
 ];
 
+// Bugfix: services 引入的 CJS 依赖 socks 只声明在 services 自己的 package.json，tsup 不会自动外置，
+// 随 @zcode/services 一起被内联进 ESM main/host/scheduler；其 require("events") 被 esbuild 改写为
+// __require 垫片，Electron 主进程启动即报 Dynamic require of "events" is not supported。
+// 这是 undici/node-forge/yauzl 之后同类问题的第 4 次复发。这里改为给每个 ESM 产物注入真实 require，
+// 一次消除整类崩溃；上面的 externals 因 native addon / asar 注入等原因继续保留，不再作为兜底手段扩充。
+const desktopEsmBanner = { js: ESM_NODE_REQUIRE_BANNER };
+
 function createDevReadyMarkerHook(target: "main" | "host" | "preload"): string {
   // CLI 级 --onSuccess 在多 config watch 模式下会被每个子构建分别触发。
   // 之前 preload 先成功时就提前写入 ready 标记，Electron 仍会在 main/host 未完成时启动。
@@ -151,6 +159,7 @@ export default defineConfig([
     // Electron 加载 main 产物时会报 Dynamic require of "assert" is not supported。
     // desktop 保持 undici 为外部依赖，remote 单文件 bundle 再单独内联。
     external: desktopNodeRuntimeExternals,
+    banner: desktopEsmBanner,
     noExternal: [
       "@zcode/server",
       "@zcode/shared",
@@ -215,6 +224,7 @@ export default defineConfig([
     // host 与 main 共用同一套 services 图，继续内联 undici 会在 Electron ESM runtime 里触发同样的 dynamic require 崩溃。
     // 这里同样保留为外部依赖，避免 desktop 开发态和打包态 host 进程启动失败。
     external: desktopNodeRuntimeExternals,
+    banner: desktopEsmBanner,
     noExternal: [
       "@zcode/server",
       "@zcode/shared",
@@ -244,6 +254,7 @@ export default defineConfig([
     // 与 host 同构：常驻 cron scheduler 进程复用 @zcode/services（tasks-index + cron），
     // 同样保留 undici 等为外部依赖，避免 Electron ESM runtime 的 dynamic require 崩溃。
     external: desktopNodeRuntimeExternals,
+    banner: desktopEsmBanner,
     noExternal: [
       "@zcode/server",
       "@zcode/shared",

@@ -7,6 +7,10 @@ const { loadBuiltinProviderConfig } = await import(
   pathToFileURL(resolve(import.meta.dirname, "../../scripts/builtin-provider-config.mjs")).href
 );
 
+const { ESM_NODE_REQUIRE_BANNER } = await import(
+  pathToFileURL(resolve(import.meta.dirname, "../../scripts/esm-node-require-banner.mjs")).href
+);
+
 const { content: zcodeBuiltinProviderConfigJson } = await loadBuiltinProviderConfig();
 
 export const SERVER_CLI_DEFINES = {
@@ -25,7 +29,8 @@ export default defineConfig({
   sourcemap: true,
   splitting: false,
   banner: {
-    js: 'import { fileURLToPath as __zcodeFileURLToPath } from "node:url"; import { dirname as __zcodeDirname } from "node:path"; const __filename = __zcodeFileURLToPath(import.meta.url); const __dirname = __zcodeDirname(__filename);',
+    // 内联的 CJS 依赖（socks、yazl 等）需要真实 require，与 desktop/server 共用同一 banner。
+    js: `${ESM_NODE_REQUIRE_BANNER}\nimport { fileURLToPath as __zcodeFileURLToPath } from "node:url"; import { dirname as __zcodeDirname } from "node:path"; const __filename = __zcodeFileURLToPath(import.meta.url); const __dirname = __zcodeDirname(__filename);`,
   },
   noExternal: ["@zcode/shared", "@zcode/rpc", "@zcode/services"],
   define: SERVER_CLI_DEFINES,
