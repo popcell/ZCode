@@ -146,6 +146,9 @@ async function buildOutputs(skipBuild) {
   }
 
   run("pnpm", ["--filter", "@zcode/cli...", "build"]);
+  // 修复原因：TUI 发行闭包会把 @zcode/shared 的 src 入口改写成 dist。shared 过去没有
+  // build script，pnpm --filter @zcode/cli... build 会跳过它，组包时才报 Missing dist。
+  run("pnpm", ["--filter", "@zcode/shared", "build"]);
   await rm(resolve(root, "packages", "server", "dist"), {
     force: true,
     recursive: true,

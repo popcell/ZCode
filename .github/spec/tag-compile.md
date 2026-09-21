@@ -18,6 +18,7 @@
   | ubuntu-24.04-arm | linux | arm64 |
 
 - 命令行发行包在 `ubuntu-24.04` 跑 `pnpm build:zcode`，`--version` 用 tag 版本；`--base-url` 默认指向该 tag 的 GitHub Release 下载根。`install.sh` 仍按 `releases/<version>/` 目录约定，GitHub Release 只保证 tarball / sha256 可下载。
+- `build:zcode` 必须先编出 TUI 闭包里仍导出 `src` 的 workspace 包（至少 `@zcode/shared` 的 `dist/index.js`），再收集 SEA TUI 资源。只跑 `@zcode/cli...` 且该包没有 `build` script 时，组包会在 `Missing @zcode/shared dist files` 处失败。
 - 默认不签名、不公证。`ZCODE_ENABLE_MAC_SIGN` 保持关闭；`CSC_IDENTITY_AUTO_DISCOVERY=false`。未签名 macOS 包会触发隔离，Windows 可能被 SmartScreen 拦截。
 - 桌面矩阵 `fail-fast: false`。全部桌面目标与 CLI 都成功后才创建或更新 GitHub Release；失败目标的产物仍留在 Actions artifact。
 - 不写业务状态。所有者是本 workflow；不另起并行打包入口。
@@ -27,3 +28,4 @@
 1. 推送 `v<package.json.version>` 后，六个桌面目标与 CLI 任务都启动。
 2. 版本不匹配的 tag 在 resolve 步失败。
 3. 全绿后该 tag 的 Release 含各平台安装包、`zcode-<version>.tar.gz` 与 `sha256.txt`。
+4. CLI 任务在干净 checkout 上能编出 `@zcode/shared/dist/index.js`，不再因 `Missing @zcode/shared dist files` 失败。
